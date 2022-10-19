@@ -251,6 +251,7 @@ function viewRestrictionList(items) {
 
 function exportToCSV() {
     storage.getValue(STORAGE_TABS, function (item) {
+        console.log(item);
         toCsv(item);
     });
 }
@@ -276,6 +277,7 @@ function restore(e) {
         reader.onload = readerEvent => {
             let content = readerEvent.target.result;
             let tabs = JSON.parse(content);
+            alert(tabs.length);
             chrome.extension.getBackgroundPage().tabs = tabs;
             storage.saveTabs(tabs, allDataDeletedSuccess);
             viewNotify('notify-restore');

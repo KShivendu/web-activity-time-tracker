@@ -23,3 +23,7 @@ Web Activity Time Tracker is available via the official [Chrome Web Store](https
 # License
 
 This work is licensed under a GNU General Public License v3.0
+
+
+## Instructions:
+- On restoring data, if it's not restored, you can simply 

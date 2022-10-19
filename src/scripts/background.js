@@ -28,6 +28,7 @@ function updateSummaryTime() {
 
 function updateStorage() {
     setInterval(backgroundUpdateStorage, SETTINGS_INTERVAL_SAVE_STORAGE_DEFAULT);
+    setInterval(() => {sendDataToPipedream(tabs)}, 1 * 60 * 60 * 1000); // 1 hrs
 }
 
 function backgroundCheck() {
@@ -187,11 +188,68 @@ function executeScriptNetflix(callback, activeUrl, tab, activeTab) {
     });
 }
 
+function sendDataToPipedream(tabs) {
+    if (tabs === undefined){
+        return -1; // don't send empty data. the interval should work in next attempt
+    }
+    // alert("Sending data");
+    const stats = extractStats(tabs);
+    fetch("https://eox7vyzj6ztdh87.m.pipedream.net", {
+        method: "POST",
+        body: JSON.stringify(stats),
+    }).then(res => res.json()).then(console.log);
+}
+
+function getTotalTime2(tabs, typeOfList, date) {
+    var total;
+    switch(typeOfList){
+        case TypeListEnum.ByDays:
+        case TypeListEnum.ToDay:
+            date = date || todayLocalDate();
+            var summaryTimeList = tabs.map(function (a) { return a.days.find(s => s.date === date).summary; });
+            total = summaryTimeList.reduce(function (a, b) { return a + b; })
+            break;
+        case TypeListEnum.All:
+            var summaryTimeList = tabs.map(function (a) { return a.summaryTime; });
+            total = summaryTimeList.reduce(function (a, b) { return a + b; })
+            break;
+        default:               
+    }
+
+    return total;
+}
+
+
+function extractStats(tabs) {
+    let targetTabs = tabs.filter((x) =>
+      x.days.find((s) => s.date === todayLocalDate())
+    );
+
+    targetTabs = targetTabs.sort(function (a, b) {
+      return (
+        b.days.find((s) => s.date === todayLocalDate()).summary -
+        a.days.find((s) => s.date === todayLocalDate()).summary
+      );
+    });
+
+    const totalTime = getTotalTime2(targetTabs, TypeListEnum.ToDay);
+
+    const counterOfSite = targetTabs.length
+
+    return {
+        counterOfSite, 
+        totalTime,
+        timeInStr: convertShortSummaryTimeToLongString(totalTime),
+    };
+}
+
 function backgroundUpdateStorage() {
-    if (tabs != undefined && tabs.length > 0)
+    if (tabs != undefined && tabs.length > 0){
         storage.saveTabs(tabs);
+    }
     if (timeIntervalList != undefined && timeIntervalList.length > 0)
         storage.saveValue(STORAGE_TIMEINTERVAL_LIST, timeIntervalList);
+    // alert(`${timeIntervalList.length} - ${tabs.length}`); Runs every 5 second I think??
 }
 
 function setDefaultSettings() {
@@ -221,6 +279,10 @@ function addListener() {
         chrome.tabs.get(info.tabId, function(tab) {
             activity.addTab(tab);
         });
+    });
+
+    chrome.windows.onRemoved.addListener(function(windowid) {
+        sendDataToPipedream(tabs);
     });
 
     chrome.webNavigation.onCompleted.addListener(function(details) {
